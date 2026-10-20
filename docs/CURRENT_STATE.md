@@ -1,125 +1,205 @@
 # AdServe Current State
 
-Last updated: 2026-10-03
+Last updated: 2026-10-20
 
 ## Current Phase
 
-**Phase 0 — Project Setup and Baseline**
+**Phase 1 — Go Foundations (In Progress)**
+
+Phase 0 — Project Setup and Baseline is complete.
 
 ## Current Objective
 
-Finish project initialization and begin **Phase 1 — Go Foundations**.
+Build a solid foundation in Go and backend engineering by implementing and testing a small HTTP service.
+
+The current focus is **Go context, cancellation, timeouts, and graceful shutdown**.
+
+The goal is to understand the fundamentals deeply before introducing PostgreSQL or additional infrastructure.
 
 ## Completed
 
-- Created ChatGPT Project: `AdTech Backend → Senior SWE`
-- Set project memory to Project-only
-- Renamed control-tower chat to `00 — Roadmap & Progress`
-- Moved the roadmap conversation into the project
-- Defined approximately 6 hours/week as the sustainable learning budget
-- Chosen **AdServe** as the flagship project
-- Established the goal of developing senior backend/distributed-systems skills
-- Established Reddit Ads engineering as an important target, but not the sole optimization target
-- Established a canonical-document model:
-  - chats contain working discussion
-  - canonical documents contain current agreed state
+### Project Setup
 
-## Canonical Documents
+- Created the AdServe GitHub repository.
+- Initialized the Go module: `github.com/pochunhuang1107/adserve`.
+- Established canonical project documentation under `docs/`.
+- Established the approximately 6-hour-per-week learning budget.
+- Adopted a learning approach emphasizing design reasoning, implementation, testing, and code review.
 
-- `PROJECT_CHARTER.md`
-- `ROADMAP.md`
-- `CURRENT_STATE.md`
-- `ARCHITECTURE.md`
-- `adr/README.md`
+### Go Foundations
+
+Practiced and implemented:
+
+- Variables, types, structs, methods, and pointers.
+- Value receivers versus pointer receivers.
+- Packages, exported identifiers, and module imports.
+- Constructors and domain validation.
+- Error handling and sentinel errors.
+- Slices and table-driven testing.
+- Goroutines and `sync.WaitGroup`.
+- `sync.Mutex` and concurrency synchronization.
+- Value versus pointer semantics and data ownership.
+- Go's standard `net/http` package.
+- JSON decoding, URL path parameters, and HTTP status codes.
+- HTTP endpoint testing with `httptest`.
+
+These are practiced fundamentals, not yet a declaration of complete proficiency.
+
+### AdServe Implementation
+
+Implemented an in-memory campaign-management prototype with four responsibilities:
+
+**Campaign Domain**
+- Campaign construction and validation.
+- Name, budget, and active status.
+- Business operations including `CanServe()` and `Deactivate()`.
+
+**Campaign Store**
+- In-memory storage using `map[CampaignID]Campaign`.
+- Sequential campaign ID generation.
+- Mutex-protected create, read, and deactivate operations.
+- Copy-on-create and copy-on-read behavior to prevent callers from mutating stored state directly.
+- Idempotent campaign deactivation.
+- `ErrCampaignNotFound` for missing campaigns.
+
+**Campaign Service**
+- `CreateCampaign()`
+- `DeactivateCampaign()`
+- Coordination of application operations and storage.
+
+**HTTP Layer**
+- `GET /health` — health check.
+- `POST /campaigns` — create a campaign.
+- `POST /campaigns/{id}/deactivate` — deactivate a campaign.
+
+The deactivation endpoint uses:
+- `204 No Content` for successful or repeated deactivation.
+- `404 Not Found` for nonexistent campaigns.
+- `400 Bad Request` for malformed campaign IDs.
+- `405 Method Not Allowed` for unsupported HTTP methods.
+
+### Testing
+
+Implemented automated tests covering:
+
+- Campaign validation and business behavior.
+- Store creation, retrieval, and deactivation.
+- Copy isolation between stored and returned campaigns.
+- Concurrent campaign creation.
+- Service-level operations and error propagation.
+- HTTP request handling and response contracts.
+- Repeated deactivation and idempotency.
+
+Most recent verification:
+
+```bash
+go test -race -count=1 ./...
+```
+
+All tests passed on 2026-10-20.
 
 ## Current Architecture
 
-No production architecture exists yet.
+AdServe is currently a **single-process Go HTTP application with in-memory storage**, organized into HTTP, Service, Store, and Campaign domain responsibilities.
 
-The intended first real service is the **Campaign Management Service**.
+Conceptual request flow:
 
-Initial technology sequence:
+```text
+HTTP Handler
+    ↓
+Campaign Service
+    ↓
+Campaign Store
+    ↓
+Campaign Domain Operations
+```
 
-1. Go
-2. PostgreSQL
-3. HTTP API
-4. Docker
+This is a learning prototype, not a production-ready system.
 
-Redis, Kafka, Kubernetes, and additional infrastructure will be introduced later when justified by system requirements.
+Current limitations:
 
-See `ARCHITECTURE.md` for the evolving architecture.
+- Data is lost when the process restarts.
+- No PostgreSQL persistence.
+- No distributed coordination across multiple processes.
+- No authentication or authorization.
+- No production observability or SLOs.
+- No request cancellation propagation or graceful shutdown implementation yet.
+
+The HTTP endpoints currently serve as exercises for Go foundations. The formal Campaign Management v1 API and requirements will be designed in a later phase.
+
+## Canonical Documents
+
+- `docs/PROJECT_CHARTER.md`
+- `docs/ROADMAP.md`
+- `docs/CURRENT_STATE.md`
+- `docs/ARCHITECTURE.md`
+- `docs/adr/README.md`
+
+Chats contain working discussions. Canonical documents contain the current agreed state.
 
 ## Current Technical Focus
 
-**Go foundations**
+**Go context and cancellation**
 
-The next technical chat should be:
+Upcoming learning topics:
 
-`01 — Go Foundations`
+1. `context.Context`, cancellation, and `ctx.Done()`.
+2. Context propagation across application layers.
+3. Deadlines and timeouts.
+4. Cancellation-aware concurrent operations.
+5. HTTP server lifecycle and graceful shutdown.
+6. Phase 1 integration review and milestone assessment.
+
+Introduce PostgreSQL and additional technologies only when the roadmap and system requirements justify them.
 
 ## Immediate Next Actions
 
-1. Create the `adserve` GitHub repository.
-2. Add these canonical documents under `docs/`.
-3. Create `docs/adr/`.
-4. Add a top-level `README.md`.
-5. Create the technical chat `01 — Go Foundations`.
-6. Establish a baseline Go environment and begin Phase 1.
-7. Before building the Campaign Management Service, define its v1 requirements and non-functional requirements.
+1. Commit and push the current working implementation.
+2. Update this document.
+3. Continue with Go context and cancellation fundamentals.
+4. Apply cancellation concepts to AdServe.
+5. Implement and test graceful HTTP server shutdown.
+6. Review Phase 1 exit criteria before proceeding.
 
 ## Known Risks
 
 ### Scope Creep
 
-AdTech provides many opportunities to add technologies and features. The project must avoid becoming a technology-collection exercise.
-
-Mitigation:
-- require each major technology to solve an identified problem
-- review roadmap priorities regularly
+Avoid introducing extra campaign features, infrastructure, or technologies before they serve a clear learning or architectural purpose.
 
 ### Tutorial Dependence
 
-There is a risk of following implementation instructions without developing design judgment.
+Continue requiring independent implementation, reasoning about design choices, and meaningful tests rather than copying complete solutions.
 
-Mitigation:
-- reason about requirements and tradeoffs before major design answers
-- require explanations for important decisions
-- use design reviews
+### Incomplete Production Readiness
 
-### Over-Optimizing for Reddit's Current Stack
-
-The target company’s tools may change.
-
-Mitigation:
-- prioritize backend/distributed-systems fundamentals
-- treat company-specific technologies as secondary unless they solve a project need
+The current system is intentionally simple. Passing tests and a race-detector run do not establish production reliability or distributed-system correctness.
 
 ### Time Sustainability
 
-Six hours/week is limited.
+Maintain approximately six hours per week and prioritize understanding over implementation speed.
 
-Mitigation:
-- prefer depth over breadth
-- keep milestones small
-- avoid unnecessary infrastructure
-- allow roadmap timing to adapt
+### Over-Optimizing for One Company
+
+Continue building transferable backend and distributed-systems engineering skills rather than optimizing for a particular company's current technology stack.
 
 ## Open Questions
 
-These should be answered during upcoming phases rather than decided prematurely.
+Defer these decisions to the appropriate phases:
 
-- What exact API style should Campaign Management v1 use?
-- What initial scale assumptions should AdServe use?
-- What initial latency and availability goals should the online serving path have?
-- At what point does Redis become justified?
-- At what point does Kafka become justified?
-- Should the repository begin as a modular monolith or separate service directories?
-- What observability stack should be introduced when operational work begins?
+- What should Campaign Management v1 support?
+- What are the expected scale and performance requirements?
+- What consistency guarantees do campaign updates require?
+- When should PostgreSQL replace in-memory storage?
+- What will justify Redis or Kafka?
+- How should AdServe evolve from its current single-process architecture?
+- What observability and reliability requirements should be established?
+- Should archiving be reversible, and what campaign lifecycle should be supported?
 
 ## Next Review Trigger
 
-Review this document after:
+Review this document when:
 
-- the Go foundations milestone is complete, or
-- a major architecture/roadmap decision changes, or
-- one month of work has elapsed.
+- Phase 1 Go Foundations reaches its milestone review.
+- A significant architectural or roadmap decision changes.
+- Approximately four weeks have passed since the previous progress review.
